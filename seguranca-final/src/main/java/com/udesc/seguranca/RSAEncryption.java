@@ -1,5 +1,6 @@
 package com.udesc.seguranca;
 
+import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -10,63 +11,84 @@ public class RSAEncryption {
     private BigInteger n, d, e;
     private static final SecureRandom random = new SecureRandom();
 
-    // Construtor para gerar chaves públicas e privadas
+    //O bitlen é o tamanho de N, neste caso que é de 2048 bits
     public RSAEncryption(int bitlen) {
-        int keyLength = 256;
-        BigInteger p = BigInteger.probablePrime(bitlen / 2, random);
-        BigInteger q = BigInteger.probablePrime(bitlen / 2, random);
+
+        //Geração de dois primos grandes e edistintos
+        BigInteger p = BigInteger.probablePrime(bitlen, random);
+        BigInteger q = BigInteger.probablePrime(bitlen, random);
+        
+        //Módulo
         n = p.multiply(q);
+
+        //Fórmula de Euler
         BigInteger phi = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
+        
+        //O número E será gerado da mesma forma que os primos anteriores, mas com um N de tamanho diferente
+        int keyLength = 256;
         e = generateRandomPrime(keyLength);
         d = e.modInverse(phi);
     }
 
+    //Método para gerar primos aleatórios usando o método probablePrime do BigInteger
     public static BigInteger generateRandomPrime(int bitLength) {
         return BigInteger.probablePrime(bitLength, random);
     }
 
+    //Método que faz a criptografia mensagemCriptografada = message^e mod(n)
     public BigInteger encrypt(BigInteger message) {
         return message.modPow(e, n);
     }
 
+    //Método que faz a decriptografia mensagemDecriptografada = mensagemCriptografada^d mod(n)
     public BigInteger decrypt(BigInteger encrypted) {
         return encrypted.modPow(d, n);
     }
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.print("Digite a mensagem a ser criptografada: ");
-        String message = scanner.nextLine();
-        scanner.close();
-
+        Scanner scanner = new Scanner(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         int bitlen = 2048;
         RSAEncryption rsa = new RSAEncryption(bitlen);
 
-        System.out.println("\nChave Pública: (n = " + rsa.n + ", e = " + rsa.e + ")");
-        System.out.println("\nChave Privada: (n = " + rsa.n + ", d = " + rsa.d + ")");
+        while (true) {
+            System.out.print("\nDigite a mensagem a ser criptografada (ou 'exit' para sair): ");
+            String message = scanner.nextLine();
 
-        BigInteger encryptedMessage = sendEncryptedMessage(rsa, message);
+            if (message.equalsIgnoreCase("exit")) {
+                break;
+            }
 
-        receiveDecryptedMessage(rsa, encryptedMessage);
+            System.out.println("\nChave Pública: \n\n n = " + rsa.n + ", \n e = " + rsa.e);
+            System.out.println("\nChave Privada: \n\n n = " + rsa.n + ", \n d = " + rsa.d);
+    
+            BigInteger encryptedMessage = sendEncryptedMessage(rsa, message);
+            receiveDecryptedMessage(rsa, encryptedMessage);
+        }
+
+        scanner.close();
     }
 
-    // Método para simular o sistema de origem da mensagem
     public static BigInteger sendEncryptedMessage(RSAEncryption rsa, String message) {
         System.out.println("\nMensagem Original: " + message);
 
-        BigInteger messageBigInt = new BigInteger(message.getBytes(StandardCharsets.UTF_8));
+        BigInteger messageBigInt = new BigInteger(1, message.getBytes(StandardCharsets.UTF_8));
 
         BigInteger encryptedMessage = rsa.encrypt(messageBigInt);
         System.out.println("\nMensagem Criptografada: " + encryptedMessage.toString(16));
         return encryptedMessage;
     }
 
-    // Método para simular o sistema de destino da mensagem
     public static void receiveDecryptedMessage(RSAEncryption rsa, BigInteger encryptedMessage) {
         BigInteger decryptedMessage = rsa.decrypt(encryptedMessage);
 
-        String decryptedString = new String(decryptedMessage.toByteArray(), StandardCharsets.UTF_8);
+        byte[] decryptedBytes = decryptedMessage.toByteArray();
+        if (decryptedBytes[0] == 0) {
+            byte[] temp = new byte[decryptedBytes.length - 1];
+            System.arraycopy(decryptedBytes, 1, temp, 0, temp.length);
+            decryptedBytes = temp;
+        }
+
+        String decryptedString = new String(decryptedBytes, StandardCharsets.UTF_8);
         System.out.println("\nMensagem Descriptografada: " + decryptedString);
     }
 }
